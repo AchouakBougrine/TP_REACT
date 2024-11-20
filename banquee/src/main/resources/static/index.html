@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestion des Comptes</title>
+  <!-- Axios -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <!-- React et ReactDOM -->
+  <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+  <!-- Babel -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f8f9fa;
+    }
+
+    .content {
+        padding: 20px;
+        text-align: center;
+        min-height: 300px;
+        background-color: #f3e8ff; /* Violet pastel */
+        border-radius: 10px;
+        margin: 20px auto;
+        width: 80%;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .content h2 {
+        margin-top: 0;
+        color: #6a0dad;
+    }
+
+    table {
+        width: 100%;
+        margin-top: 20px;
+        border-collapse: collapse;
+        background-color: white;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    table th {
+        background-color: #d9c7f3;
+        color: #6a0dad;
+        font-size: 16px;
+        text-align: left;
+        padding: 10px;
+    }
+
+    table td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    table tr:nth-child(odd) {
+        background-color: #f3e8ff;
+    }
+
+    table tr:hover {
+        background-color: #e2d5f7;
+    }
+
+    .delete-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 5px 10px;
+        color: #DA70D6;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        border-radius: 5px;
+        transition: background-color 0.3s ease, transform 0.1s ease;
+    }
+
+    .delete-btn:hover {
+        background-color: #DA70D6;
+    }
+
+    .delete-btn:active {
+        transform: scale(0.95);
+    }
+    /* Bouton Modifier avec icône */
+.edit-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 5px 10px;
+    color: #DA70D6;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+}
+
+/* Survol du bouton Modifier */
+.edit-btn:hover {
+    background-color: #DA70D6
+}
+
+/* État actif du bouton Modifier */
+.edit-btn:active {
+    transform: scale(0.95); /* Réduction légère pour simuler une pression */
+}
+
+    .form-container {
+        width: 80%;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-container h2 {
+        color: #6a0dad;
+        margin-bottom: 20px;
+    }
+
+    .form-container label {
+        display: block;
+        font-size: 14px;
+        font-weight: bold;
+        color: #6a0dad;
+        margin-bottom: 5px;
+    }
+
+    .form-container input, .form-container select {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #f9f0ff;
+        color: #6a0dad;
+        font-size: 14px;
+    }
+
+    .form-container button {
+        background-color: #6a0dad;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    .form-container button:hover {
+        background-color: #5c0cae;
+    }
+
+    .menu {
+        display: flex;
+        justify-content: center;
+        margin: 20px;
+    }
+
+    .menu button {
+        padding: 10px 20px;
+        margin: 10px;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 5px;
+        color: white;
+        background-color: #6a0dad;
+        transition: background-color 0.3s ease;
+    }
+
+    .menu button:hover {
+        background-color: #5c0cae;
+    }
+
+    .menu.hidden {
+        display: none;
+    }
+
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+  const { useState, useEffect } = React;
+
+  const apiUrl = 'http://localhost:8085/banque/comptes';
+
+  const App = () => {
+    const [page, setPage] = useState('');
+    const [accounts, setAccounts] = useState([]);
+    const [newAccount, setNewAccount] = useState({
+        solde: '',
+        dateCreation: '',
+        type: 'EPARGNE',
+    });
+
+    const fetchAccounts = () => {
+        axios.get(apiUrl)
+            .then(response => setAccounts(response.data))
+            .catch(error => console.error('Erreur lors de la récupération des comptes:', error));
+    };
+
+    const addAccount = (e) => {
+        e.preventDefault();
+        const accountToAdd = {
+            solde: newAccount.solde,
+            dateCreation: newAccount.dateCreation,
+            type: newAccount.type,
+        };
+
+        axios.post(apiUrl, accountToAdd)
+            .then(() => {
+                alert('Compte ajouté avec succès');
+                setNewAccount({ solde: '', dateCreation: '', type: 'EPARGNE' });
+                setPage('list');
+                fetchAccounts();
+            })
+            .catch(error => {
+                console.error('Erreur lors de l\'ajout du compte :', error);
+                alert('Erreur : le compte n\'a pas été ajouté.');
+            });
+    };
+
+    // Fonction pour modifier un compte
+    const editAccount = (account) => {
+        setNewAccount({
+            id: account.id,
+            solde: account.solde,
+            dateCreation: account.dateCreation,
+            type: account.type,
+        });
+        setPage('edit');
+    };
+
+    // Fonction pour mettre à jour un compte
+    const updateAccount = (e) => {
+        e.preventDefault();
+        const updatedAccount = {
+            solde: newAccount.solde,
+            dateCreation: newAccount.dateCreation,
+            type: newAccount.type,
+        };
+
+        axios.put(`${apiUrl}/${newAccount.id}`, updatedAccount)
+            .then(() => {
+                alert('Compte mis à jour avec succès');
+                setNewAccount({ solde: '', dateCreation: '', type: 'EPARGNE' });
+                setPage('list');
+                fetchAccounts();
+            })
+            .catch(error => {
+                console.error('Erreur lors de la mise à jour du compte :', error);
+                alert('Erreur : le compte n\'a pas été mis à jour.');
+            });
+    };
+
+    const deleteAccount = (id) => {
+        axios.delete(`${apiUrl}/${id}`)
+            .then(() => {
+                alert('Compte supprimé avec succès');
+                fetchAccounts();
+            })
+            .catch(error => console.error('Erreur lors de la suppression du compte:', error));
+    };
+
+    return (
+        <div>
+            <div className="content">
+                {page === '' && (
+                    <>
+                        <h2>Bienvenue dans l'application de Gestion des Comptes</h2>
+
+<p>
+    Votre sécurité et votre satisfaction sont nos priorités.
+    Toutes vos données sont protégées et gérées avec le plus grand soin pour vous offrir une expérience fiable et sécurisée.
+</p>
+<p>
+    Utilisez le menu ci-dessous pour naviguer.
+</p>
+
+                    </>
+                )}
+                {page === 'list' && (
+                    <div>
+                        <h2>Liste des Comptes</h2>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Solde</th>
+                                    <th>Date de Création</th>
+                                    <th>Type</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {accounts.map(account => (
+                                    <tr key={account.id}>
+                                        <td>{account.id}</td>
+                                        <td>{account.solde.toFixed(2)}</td>
+                                        <td>{account.dateCreation}</td>
+                                        <td>{account.type}</td>
+                                        <td>
+                                            <button className="delete-btn" onClick={() => deleteAccount(account.id)}>
+                                                <i className="fa fa-trash"></i> Supprimer
+                                            </button>
+                                            <button className="delete-btn" onClick={() => editAccount(account)}>
+                                                <i className="fa fa-edit"></i> Modifier
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                {page === 'add' && (
+                    <div className="form-container">
+                        <h2>Ajouter un Compte</h2>
+                        <form onSubmit={addAccount}>
+                            <label>Solde:</label>
+                            <input
+                                type="number"
+                                value={newAccount.solde}
+                                onChange={(e) => setNewAccount({ ...newAccount, solde: e.target.value })}
+                                required
+                            />
+                            <label>Date de Création:</label>
+                            <input
+                                type="date"
+                                value={newAccount.dateCreation}
+                                onChange={(e) => setNewAccount({ ...newAccount, dateCreation: e.target.value })}
+                                required
+                            />
+                            <label>Type:</label>
+                            <select
+                                value={newAccount.type}
+                                onChange={(e) => setNewAccount({ ...newAccount, type: e.target.value })}
+                            >
+                                <option value="EPARGNE">Épargne</option>
+                                <option value="COURANT">Courant</option>
+                            </select>
+                            <button type="submit">Ajouter</button>
+                        </form>
+                    </div>
+                )}
+                {page === 'edit' && (
+                    <div className="form-container">
+                        <h2>Modifier un Compte</h2>
+                        <form onSubmit={updateAccount}>
+                            <label>Solde:</label>
+                            <input
+                                type="number"
+                                value={newAccount.solde}
+                                onChange={(e) => setNewAccount({ ...newAccount, solde: e.target.value })}
+                                required
+                            />
+                            <label>Date de Création:</label>
+                            <input
+                                type="date"
+                                value={newAccount.dateCreation}
+                                onChange={(e) => setNewAccount({ ...newAccount, dateCreation: e.target.value })}
+                                required
+                            />
+                            <label>Type:</label>
+                            <select
+                                value={newAccount.type}
+                                onChange={(e) => setNewAccount({ ...newAccount, type: e.target.value })}
+                            >
+                                <option value="EPARGNE">Épargne</option>
+                                <option value="COURANT">Courant</option>
+                            </select>
+                            <button type="submit">Mettre à Jour</button>
+                        </form>
+                    </div>
+                )}
+            </div>
+
+            <div className={`menu ${page !== '' ? 'hidden' : ''}`}>
+                <button onClick={() => { fetchAccounts(); setPage('list'); }}>
+                    Voir la Liste des Comptes
+                </button>
+                <button onClick={() => setPage('add')}>
+                    Ajouter un Compte
+                </button>
+            </div>
+        </div>
+    );
+  };
+
+  ReactDOM.render(<App />, document.getElementById('root'));
+</script>
+</body>
+</html>
